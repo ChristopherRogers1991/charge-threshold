@@ -1,0 +1,81 @@
+#!/bin/bash
+
+LOWER_THRESHOLD_FILE=/sys/class/power_supply/BAT0/charge_control_start_threshold
+UPPER_THRESHOLD_FILE=/sys/class/power_supply/BAT0/charge_control_end_threshold
+
+
+function print_usage {
+    echo "
+Usage:
+
+charge-threshold [LOWER_LIMIT] UPPER_LIMIT
+charge-threshold [-h]
+
+If no arguments are supplied, this will print the current lower and upper limits.
+
+-h    Display this usage message.
+
+LOWER_LIMIT and UPPER_LIMIT should be integers between 0 and 100. If supplied,
+LOWER_LIMIT must be less than UPPER_LIMIT. If only UPPER_LIMIT is supplied, it
+must be greater than the current LOWER_LIMIT.
+"
+}
+
+
+function assert_in_bounds {
+    LOWER_LIMIT=$1
+    UPPER_LIMIT=$2
+    if [[ $UPPER_LIMIT -le $LOWER_LIMIT ]]; then
+        echo "ERROR: UPPER_LIMIT must be greater than LOWER_LIMIT;"
+        echo "UPPER_LIMIT was $UPPER_LIMIT, LOWER_LIMIT was $LOWER_LIMIT"
+        exit 2
+    fi
+
+    if [[ $LOWER_LIMIT -lt 0 || $UPPER_LIMIT -gt 100 ]]; then
+        echo "ERROR: LOWER_LIMIT must be greater-than-or-equal-to 0, and UPPER_LIMIT must be less-than-or-equal-to 100;"
+        echo "UPPER_LIMIT was $UPPER_LIMIT, LOWER_LIMIT was $LOWER_LIMIT"
+        exit 3
+    fi
+}
+
+
+if [[ $# -gt 2 ]]; then
+    print_usage
+    exit 1
+fi
+
+
+if [[ $1 = '-h' ]]; then
+    print_usage
+    exit 0
+fi
+
+
+LOWER_LIMIT=`cat $LOWER_THRESHOLD_FILE`
+UPPER_LIMIT=`cat $UPPER_THRESHOLD_FILE`
+
+
+if [[ $# -eq 0 ]]; then
+    echo $LOWER_LIMIT $UPPER_LIMIT
+    exit 0
+fi
+
+
+if [[ $# -eq 1 ]]; then
+    UPPER_LIMIT=$1
+    assert_in_bounds $LOWER_LIMIT $UPPER_LIMIT
+    echo $UPPER_LIMIT > $UPPER_THRESHOLD_FILE
+    exit 0
+fi
+
+
+LOWER_LIMIT=$1
+UPPER_LIMIT=$2
+
+
+assert_in_bounds $LOWER_LIMIT $UPPER_LIMIT
+
+
+echo $LOWER_LIMIT > $LOWER_THRESHOLD_FILE
+echo $UPPER_LIMIT > $UPPER_THRESHOLD_FILE
+
